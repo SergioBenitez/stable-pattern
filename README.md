@@ -1,4 +1,4 @@
-# `stable-pattern` &thinsp; [![crates.io]][crate] [![docs.rs]][docs]
+# stable-pattern &thinsp; [![crates.io]][crate] [![docs.rs]][docs]
 
 [crates.io]: https://img.shields.io/crates/v/stable-pattern.svg
 [crate]: https://crates.io/crates/stable-pattern
