@@ -1,6 +1,6 @@
 [package]
 name = "stable-pattern"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Sergio Benitez <sb@sergio.bz>"]
 edition = "2018"
 description = "Stable port of std::str::Pattern and friends."

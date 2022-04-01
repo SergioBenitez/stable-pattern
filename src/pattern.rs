@@ -126,6 +126,18 @@ pub trait Pattern<'a>: Sized {
         }
     }
 
+    /// Repeatedly removes each prefix of the haystack matching the pattern.
+    #[inline]
+    fn trim_start_matches_of(self, haystack: &'a str) -> &'a str {
+        let mut i = haystack.len();
+        let mut searcher = self.into_searcher(haystack);
+        if let Some((a, _)) = searcher.next_reject() {
+            i = a;
+        }
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { haystack.get_unchecked(i..haystack.len()) }
+    }
+
     /// Removes the pattern from the back of haystack, if it matches.
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
@@ -144,6 +156,21 @@ pub trait Pattern<'a>: Sized {
         } else {
             None
         }
+    }
+
+    /// Repeatedly removes each suffix of the haystack matching the pattern.
+    #[inline]
+    fn trim_end_matches_of(self, haystack: &'a str) -> &'a str
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        let mut i = haystack.len();
+        let mut searcher = self.into_searcher(haystack);
+        if let Some((_, b)) = searcher.next_reject_back() {
+            i = b;
+        }
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { haystack.get_unchecked(0..i) }
     }
 }
 
@@ -396,7 +423,10 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     fn next_match(&mut self) -> Option<(usize, usize)> {
         loop {
             // get the haystack after the last character found
-            let bytes = self.haystack.as_bytes().get(self.finger..self.finger_back)?;
+            let bytes = self
+                .haystack
+                .as_bytes()
+                .get(self.finger..self.finger_back)?;
             // the last byte of the utf8 encoded needle
             // SAFETY: we have an invariant that `utf8_size < 5`
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
@@ -615,7 +645,11 @@ impl<'a, C: MultiCharEq> Pattern<'a> for MultiCharEqPattern<C> {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> MultiCharEqSearcher<'a, C> {
-        MultiCharEqSearcher { haystack, char_eq: self.0, char_indices: haystack.char_indices() }
+        MultiCharEqSearcher {
+            haystack,
+            char_eq: self.0,
+            char_indices: haystack.char_indices(),
+        }
     }
 }
 
@@ -774,7 +808,11 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
 /// ```
 impl<'a, 'b> Pattern<'a> for &'b [char] {
-    pattern_methods!(CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
+    pattern_methods!(
+        CharSliceSearcher<'a, 'b>,
+        MultiCharEqPattern,
+        CharSliceSearcher
+    );
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -826,7 +864,11 @@ impl<'a, F> Pattern<'a> for F
 where
     F: FnMut(char) -> bool,
 {
-    pattern_methods!(CharPredicateSearcher<'a, F>, MultiCharEqPattern, CharPredicateSearcher);
+    pattern_methods!(
+        CharPredicateSearcher<'a, F>,
+        MultiCharEqPattern,
+        CharPredicateSearcher
+    );
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1319,8 +1361,11 @@ impl TwoWaySearcher {
             }
 
             // See if the right part of the needle matches
-            let start =
-                if long_period { self.crit_pos } else { cmp::max(self.crit_pos, self.memory) };
+            let start = if long_period {
+                self.crit_pos
+            } else {
+                cmp::max(self.crit_pos, self.memory)
+            };
             for i in start..needle.len() {
                 if needle[i] != haystack[self.position + i] {
                     self.position += i - self.crit_pos + 1;
@@ -1419,7 +1464,11 @@ impl TwoWaySearcher {
             }
 
             // See if the right part of the needle matches
-            let needle_end = if long_period { needle.len() } else { self.memory_back };
+            let needle_end = if long_period {
+                needle.len()
+            } else {
+                self.memory_back
+            };
             for i in self.crit_pos_back..needle_end {
                 if needle[i] != haystack[self.end - needle.len() + i] {
                     self.end -= self.period;
@@ -1459,7 +1508,7 @@ impl TwoWaySearcher {
         let mut left = 0; // Corresponds to i in the paper
         let mut right = 1; // Corresponds to j in the paper
         let mut offset = 0; // Corresponds to k in the paper, but starting at 0
-        // to match 0-based indexing.
+                            // to match 0-based indexing.
         let mut period = 1; // Corresponds to p in the paper
 
         while let Some(&a) = arr.get(right + offset) {
@@ -1505,7 +1554,7 @@ impl TwoWaySearcher {
         let mut left = 0; // Corresponds to i in the paper
         let mut right = 1; // Corresponds to j in the paper
         let mut offset = 0; // Corresponds to k in the paper, but starting at 0
-        // to match 0-based indexing.
+                            // to match 0-based indexing.
         let mut period = 1; // Corresponds to p in the paper
         let n = arr.len();
 
