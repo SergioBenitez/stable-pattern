@@ -126,6 +126,18 @@ pub trait Pattern<'a>: Sized {
         }
     }
 
+    /// Repeatedly removes each prefix of the haystack matching the pattern.
+    #[inline]
+    fn trim_start_matches_of(self, haystack: &'a str) -> &'a str {
+        let mut i = haystack.len();
+        let mut searcher = self.into_searcher(haystack);
+        if let Some((a, _)) = searcher.next_reject() {
+            i = a;
+        }
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { haystack.get_unchecked(i..haystack.len()) }
+    }
+
     /// Removes the pattern from the back of haystack, if it matches.
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
@@ -144,6 +156,21 @@ pub trait Pattern<'a>: Sized {
         } else {
             None
         }
+    }
+
+    /// Repeatedly removes each suffix of the haystack matching the pattern.
+    #[inline]
+    fn trim_end_matches_of(self, haystack: &'a str) -> &'a str
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        let mut i = haystack.len();
+        let mut searcher = self.into_searcher(haystack);
+        if let Some((_, b)) = searcher.next_reject_back() {
+            i = b;
+        }
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { haystack.get_unchecked(0..i) }
     }
 }
 
